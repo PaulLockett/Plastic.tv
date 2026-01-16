@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Clip Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Browser Clip Settings</h1>
+      <p class="subtitle">Configure your network capture and export settings</p>
+    </header>
+
+    <!-- Supabase Configuration -->
+    <section class="section">
+      <h2>Supabase Configuration</h2>
+      <p class="section-desc">Connect to your Supabase project to save clips to the cloud.</p>
+
+      <div class="form-group">
+        <label for="supabase-url">Project URL</label>
+        <input type="url" id="supabase-url" placeholder="https://your-project.supabase.co">
+        <span class="help-text">Your Supabase project URL</span>
+      </div>
+
+      <div class="form-group">
+        <label for="supabase-key">API Key</label>
+        <input type="password" id="supabase-key" placeholder="Your anon or service key">
+        <span class="help-text">Your Supabase anon key or service role key</span>
+      </div>
+
+      <div class="button-group">
+        <button id="test-connection" class="btn btn-secondary">Test Connection</button>
+        <button id="save-supabase" class="btn btn-primary">Save</button>
+      </div>
+
+      <div id="connection-status" class="connection-status hidden"></div>
+    </section>
+
+    <!-- Storage Settings -->
+    <section class="section">
+      <h2>Storage Settings</h2>
+
+      <div class="form-group">
+        <label for="storage-cap">Storage Cap</label>
+        <select id="storage-cap">
+          <option value="100MB">100 MB</option>
+          <option value="250MB">250 MB</option>
+          <option value="500MB" selected>500 MB (Default)</option>
+          <option value="1GB">1 GB</option>
+          <option value="2GB">2 GB</option>
+        </select>
+        <span class="help-text">Maximum storage for the rolling buffer</span>
+      </div>
+
+      <div class="storage-info">
+        <div class="info-row">
+          <span>Current Usage:</span>
+          <span id="current-usage">--</span>
+        </div>
+        <div class="info-row">
+          <span>Buffer Duration:</span>
+          <span id="buffer-duration">--</span>
+        </div>
+        <div class="info-row">
+          <span>Total Entries:</span>
+          <span id="total-entries">--</span>
+        </div>
+        <div class="progress-bar">
+          <div id="usage-progress" class="progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <button id="clear-buffer" class="btn btn-danger">Clear Buffer</button>
+    </section>
+
+    <!-- Default Scope -->
+    <section class="section">
+      <h2>Default Clip Scope</h2>
+
+      <div class="form-group">
+        <label class="radio-label">
+          <input type="radio" name="default-scope" value="currentTab" checked>
+          <span>Current tab only</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="default-scope" value="allTabs">
+          <span>All tabs</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Sensitive Data -->
+    <section class="section">
+      <h2>Sensitive Data Sanitization</h2>
+      <p class="section-desc">Configure what data is stripped before uploading clips.</p>
+
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="sanitize-url-params" checked>
+          <span>Sanitize URL parameters containing sensitive patterns</span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="custom-patterns">Additional Header Patterns</label>
+        <textarea id="custom-patterns" placeholder="One pattern per line (e.g., x-custom-token)"></textarea>
+        <span class="help-text">Headers matching these patterns will be redacted</span>
+      </div>
+
+      <div class="info-box">
+        <strong>Always Redacted:</strong>
+        <ul>
+          <li>Authorization header</li>
+          <li>Cookie / Set-Cookie headers</li>
+          <li>Headers containing: token, key, secret, password, credential, auth</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Capture Control -->
+    <section class="section">
+      <h2>Capture Control</h2>
+
+      <div id="capture-active" class="capture-status">
+        <div class="status-badge active">
+          <span class="dot"></span>
+          Capture Active
+        </div>
+        <p class="capture-desc">Network activity is being recorded across all tabs.</p>
+        <button id="pause-capture" class="btn btn-warning">Pause Capture</button>
+      </div>
+
+      <div id="capture-paused" class="capture-status hidden">
+        <div class="status-badge paused">
+          <span class="dot"></span>
+          Capture Paused
+        </div>
+        <p class="capture-desc">Network activity is not being recorded. Your buffer is expiring.</p>
+        <button id="resume-capture" class="btn btn-success">Resume Capture</button>
+      </div>
+    </section>
+
+    <!-- Export Settings -->
+    <section class="section">
+      <h2>Export Settings</h2>
+
+      <button id="export-settings" class="btn btn-secondary">Download Settings Backup</button>
+      <span class="help-text">Export your settings as a JSON file</span>
+    </section>
+
+    <!-- Pause Confirmation Modal -->
+    <div id="pause-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Pause Capture?</h3>
+        <div class="warning-box">
+          <p>Pausing stops all network capture. Your rolling buffer will stop updating and eventually be deleted by the cleanup process.</p>
+          <p><strong>You won't be able to clip anything that happens while paused.</strong></p>
+        </div>
+        <div class="modal-buttons">
+          <button id="cancel-pause" class="btn btn-secondary">Cancel</button>
+          <button id="confirm-pause" class="btn btn-warning">Pause Capture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear Buffer Confirmation Modal -->
+    <div id="clear-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Clear Buffer?</h3>
+        <div class="warning-box">
+          <p>This will permanently delete all captured network data.</p>
+          <p><strong>This action cannot be undone.</strong></p>
+        </div>
+        <div class="modal-buttons">
+          <button id="cancel-clear" class="btn btn-secondary">Cancel</button>
+          <button id="confirm-clear" class="btn btn-danger">Clear Buffer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

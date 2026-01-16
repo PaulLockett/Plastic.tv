@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Clip</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Active State -->
+    <div id="active-state" class="state">
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <div class="status-indicator recording">
+          <span class="dot"></span>
+          <span class="status-text">Recording</span>
+        </div>
+        <div class="buffer-info">
+          <span id="buffer-time">--</span>
+          <span class="separator">|</span>
+          <span id="buffer-size">--</span>
+        </div>
+      </div>
+
+      <!-- Time Selection -->
+      <div class="section">
+        <div class="section-label">Save clip from:</div>
+        <div class="time-grid">
+          <button class="time-btn" data-time="1m">1m</button>
+          <button class="time-btn" data-time="5m">5m</button>
+          <button class="time-btn" data-time="15m">15m</button>
+          <button class="time-btn" data-time="30m">30m</button>
+          <button class="time-btn" data-time="1hr">1hr</button>
+          <button class="time-btn" data-time="3hr">3hr</button>
+          <button class="time-btn" data-time="8hr">8hr</button>
+          <button class="time-btn custom-btn" data-time="custom">Custom</button>
+        </div>
+
+        <!-- Custom Time Picker -->
+        <div id="custom-picker" class="custom-picker hidden">
+          <div class="custom-input-group">
+            <label>From:</label>
+            <input type="datetime-local" id="custom-start">
+          </div>
+          <div class="custom-input-group">
+            <label>To:</label>
+            <input type="datetime-local" id="custom-end">
+          </div>
+        </div>
+      </div>
+
+      <!-- Scope Selection -->
+      <div class="section">
+        <div class="section-label">Scope:</div>
+        <div class="scope-options">
+          <label class="scope-option">
+            <input type="radio" name="scope" value="currentTab" checked>
+            <span>Current tab</span>
+          </label>
+          <label class="scope-option">
+            <input type="radio" name="scope" value="selectTabs">
+            <span>Select tabs...</span>
+          </label>
+          <label class="scope-option">
+            <input type="radio" name="scope" value="allTabs">
+            <span>All tabs</span>
+          </label>
+        </div>
+
+        <!-- Tab Selector (hidden by default) -->
+        <div id="tab-selector" class="tab-selector hidden">
+          <div id="tab-list" class="tab-list"></div>
+          <label class="tab-item domain-option hidden" id="domain-option">
+            <input type="checkbox" id="domain-checkbox">
+            <span id="domain-label">All tabs on domain</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Clip Name (optional) -->
+      <div class="section">
+        <input type="text" id="clip-name" placeholder="Clip name (optional)" class="clip-name-input">
+      </div>
+
+      <!-- Save Button -->
+      <button id="save-btn" class="save-btn" disabled>
+        <span class="save-icon">&#128190;</span>
+        Save Clip
+      </button>
+
+      <!-- Status Message -->
+      <div id="status-message" class="status-message hidden"></div>
+    </div>
+
+    <!-- Paused State -->
+    <div id="paused-state" class="state hidden">
+      <div class="paused-header">
+        <span class="pause-icon">&#9208;</span>
+        <span>Capture Paused</span>
+      </div>
+      <p class="paused-text">
+        Network activity is not being recorded. Your buffer is expiring.
+      </p>
+      <button id="resume-btn" class="resume-btn">
+        <span class="play-icon">&#9654;</span>
+        Resume Capture
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="#" id="settings-link" class="settings-link">
+        <span class="settings-icon">&#9881;</span>
+        Settings
+      </a>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
