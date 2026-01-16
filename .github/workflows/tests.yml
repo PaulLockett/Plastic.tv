@@ -105,8 +105,7 @@ jobs:
   browserbase-tests:
     name: E2E Tests (Browserbase Cloud)
     runs-on: ubuntu-latest
-    # Only run on main branch pushes, not on PRs (to save credits)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on PRs and main branch pushes
 
     steps:
       - name: Checkout code
@@ -148,8 +147,7 @@ jobs:
   ai-agent-tests:
     name: AI Agent UX Tests
     runs-on: ubuntu-latest
-    # Only run on main branch or when manually triggered
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Run on PRs and main branch pushes
 
     steps:
       - name: Checkout code
@@ -174,7 +172,9 @@ jobs:
         working-directory: browser-clip
         run: npm run test:ai -- --output ai-test-report.txt
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
         continue-on-error: true
 
       - name: Upload AI test report
