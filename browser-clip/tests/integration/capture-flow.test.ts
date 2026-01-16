@@ -118,8 +118,8 @@ describe('Capture Flow Integration', () => {
         .find(h => h.name === 'Set-Cookie');
       expect(cookieHeader?.value).toBe('[REDACTED]');
 
-      // Verify URL param is redacted
-      expect(sanitized.log.entries[0].request.url).toContain('token=[REDACTED]');
+      // Verify URL param is redacted (brackets are URL-encoded)
+      expect(sanitized.log.entries[0].request.url).toContain('token=%5BREDACTED%5D');
 
       // Verify post data password is redacted
       const postData = JSON.parse(sanitized.log.entries[1].request.postData.text);

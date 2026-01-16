@@ -3,7 +3,24 @@
  * Provides mocks for Chrome Extension APIs and IndexedDB
  */
 
+import { jest, beforeEach } from '@jest/globals';
 import 'fake-indexeddb/auto';
+import { randomUUID } from 'crypto';
+
+// Polyfill crypto.randomUUID for Node.js test environment
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = {};
+}
+if (typeof globalThis.crypto.randomUUID !== 'function') {
+  (globalThis.crypto as any).randomUUID = randomUUID;
+}
+
+// Polyfill structuredClone for Node.js < 17
+if (typeof globalThis.structuredClone !== 'function') {
+  (globalThis as any).structuredClone = <T>(obj: T): T => {
+    return JSON.parse(JSON.stringify(obj));
+  };
+}
 
 // Mock Chrome Extension APIs
 const mockStorage: Record<string, Record<string, any>> = {

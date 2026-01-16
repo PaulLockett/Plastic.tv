@@ -106,11 +106,14 @@ describe('Sanitizer', () => {
   });
 
   describe('sanitizeUrl', () => {
+    // URL encoding converts [REDACTED] to %5BREDACTED%5D
+    const REDACTED_ENCODED = encodeURIComponent(REDACTED);
+
     it('should redact sensitive URL parameters', () => {
       const url = 'https://example.com/api?token=secret123&page=1';
       const sanitized = sanitizeUrl(url, true);
 
-      expect(sanitized).toContain('token=' + REDACTED);
+      expect(sanitized).toContain('token=' + REDACTED_ENCODED);
       expect(sanitized).toContain('page=1');
     });
 
@@ -118,8 +121,8 @@ describe('Sanitizer', () => {
       const url = 'https://example.com/api?access_token=abc&api_key=xyz&id=123';
       const sanitized = sanitizeUrl(url, true);
 
-      expect(sanitized).toContain('access_token=' + REDACTED);
-      expect(sanitized).toContain('api_key=' + REDACTED);
+      expect(sanitized).toContain('access_token=' + REDACTED_ENCODED);
+      expect(sanitized).toContain('api_key=' + REDACTED_ENCODED);
       expect(sanitized).toContain('id=123');
     });
 
@@ -210,8 +213,10 @@ describe('Sanitizer', () => {
 
     it('should sanitize URL parameters', () => {
       const sanitized = sanitizeEntry(sampleEntry);
+      // URL encoding converts [REDACTED] to %5BREDACTED%5D
+      const REDACTED_ENCODED = encodeURIComponent(REDACTED);
 
-      expect(sanitized.request.url).toContain('token=' + REDACTED);
+      expect(sanitized.request.url).toContain('token=' + REDACTED_ENCODED);
       expect(sanitized.request.url).toContain('page=1');
     });
 
@@ -314,8 +319,10 @@ describe('Sanitizer', () => {
 
     it('should sanitize WebSocket message URLs', () => {
       const sanitized = sanitizeHar(sampleHar);
+      // URL encoding converts [REDACTED] to %5BREDACTED%5D
+      const REDACTED_ENCODED = encodeURIComponent(REDACTED);
 
-      expect(sanitized.log._webSocketMessages[0].url).toContain('token=' + REDACTED);
+      expect(sanitized.log._webSocketMessages[0].url).toContain('token=' + REDACTED_ENCODED);
     });
 
     it('should sanitize WebSocket message data', () => {
@@ -328,8 +335,10 @@ describe('Sanitizer', () => {
 
     it('should sanitize SSE event URLs', () => {
       const sanitized = sanitizeHar(sampleHar);
+      // URL encoding converts [REDACTED] to %5BREDACTED%5D
+      const REDACTED_ENCODED = encodeURIComponent(REDACTED);
 
-      expect(sanitized.log._serverSentEvents[0].url).toContain('key=' + REDACTED);
+      expect(sanitized.log._serverSentEvents[0].url).toContain('key=' + REDACTED_ENCODED);
     });
 
     it('should sanitize SSE event data', () => {
