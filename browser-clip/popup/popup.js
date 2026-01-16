@@ -32,16 +32,29 @@ let isPaused = false;
 
 // Initialize popup
 async function init() {
-  // Get current status
-  const status = await sendMessage({ action: 'getStatus' });
-
-  isPaused = status.isPaused;
+  // Get paused state from local storage first (more reliable than service worker message)
+  const local = await chrome.storage.local.get('isPaused');
+  isPaused = local.isPaused === true;
   updateUIState();
 
-  if (!isPaused) {
-    // Update buffer info
-    updateBufferInfo(status.storage);
+  // Try to get full status from service worker
+  try {
+    const status = await sendMessage({ action: 'getStatus' });
+    // Update paused state if service worker has different info
+    if (status && typeof status.isPaused === 'boolean') {
+      isPaused = status.isPaused;
+      updateUIState();
+    }
 
+    if (!isPaused && status) {
+      updateBufferInfo(status.storage);
+    }
+  } catch (error) {
+    // Service worker might not be ready, continue with storage-based state
+    console.log('Could not get status from service worker:', error);
+  }
+
+  if (!isPaused) {
     // Get current tab
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTab = tabs[0] || null;
@@ -338,14 +351,27 @@ async function handleResume() {
   resumeBtn.textContent = 'Resuming...';
 
   try {
-    await sendMessage({ action: 'resumeCapture' });
+    // Update local storage first (ensures state is persisted even if service worker is slow)
+    await chrome.storage.local.set({ isPaused: false });
+
+    // Update UI immediately (optimistic update)
     isPaused = false;
     updateUIState();
 
-    // Refresh status
-    const status = await sendMessage({ action: 'getStatus' });
-    updateBufferInfo(status.storage);
+    // Notify service worker to re-attach to tabs (best effort)
+    try {
+      await sendMessage({ action: 'resumeCapture' });
+      // Refresh buffer info if service worker responded
+      const status = await sendMessage({ action: 'getStatus' });
+      updateBufferInfo(status.storage);
+    } catch (swError) {
+      // Service worker might not be ready, but state is already updated
+      console.log('Service worker notification failed, state already updated:', swError);
+    }
   } catch (error) {
+    // Revert UI if storage update failed
+    isPaused = true;
+    updateUIState();
     showStatus('error', error.message || 'Failed to resume capture');
   } finally {
     resumeBtn.disabled = false;
