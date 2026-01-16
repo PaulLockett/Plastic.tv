@@ -186,13 +186,8 @@ export async function runAITestScenario(
   const outcomes: OutcomeResult[] = [];
 
   try {
-    // Get the agent
-    const agent = stagehand.agent({
-      modelName: 'gpt-4o',
-      modelClientOptions: {
-        apiKey: process.env.OPENAI_API_KEY
-      }
-    });
+    // Get the agent (model config is set during Stagehand init)
+    const agent = stagehand.agent();
 
     // Build context
     const context = buildContextPrompt(scenario.persona, scenario);
@@ -201,18 +196,18 @@ export async function runAITestScenario(
     console.log(`\n🤖 Running scenario: ${scenario.name}`);
     console.log(`👤 Persona: ${scenario.persona.name}`);
 
-    const result = await agent.execute(context, {
-      maxSteps: scenario.maxSteps || 20,
-      timeout: scenario.timeout || 120000
+    const result = await agent.execute({
+      instruction: context,
+      maxSteps: scenario.maxSteps || 20
     });
 
-    // Record steps from agent execution
-    if (result.steps) {
-      for (const step of result.steps) {
+    // Record actions from agent execution
+    if (result.actions) {
+      for (const action of result.actions) {
         steps.push({
-          action: step.action || 'Unknown action',
-          observation: step.observation,
-          success: !step.error,
+          action: action.action || action.type || 'Unknown action',
+          observation: action.reasoning,
+          success: result.success,
           timestamp: Date.now()
         });
       }

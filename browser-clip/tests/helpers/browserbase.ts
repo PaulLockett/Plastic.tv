@@ -3,7 +3,7 @@
  * Provides utilities for E2E testing with Browserbase cloud browsers
  */
 
-import { Browserbase } from '@browserbasehq/sdk';
+import { Browserbase, toFile } from '@browserbasehq/sdk';
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -48,7 +48,7 @@ export function getBrowserbaseConfig(): BrowserbaseConfig {
  */
 export function createBrowserbaseClient(): Browserbase {
   const { apiKey } = getBrowserbaseConfig();
-  return new Browserbase(apiKey);
+  return new Browserbase({ apiKey });
 }
 
 /**
@@ -79,9 +79,8 @@ export async function uploadExtension(extensionPath: string): Promise<string> {
   const zipBuffer = await packageExtension(extensionPath);
 
   console.log('Uploading extension to Browserbase...');
-  const extension = await bb.extensions.create({
-    file: new Blob([zipBuffer], { type: 'application/zip' })
-  });
+  const file = await toFile(zipBuffer, 'extension.zip', { type: 'application/zip' });
+  const extension = await bb.extensions.create({ file });
 
   console.log(`Extension uploaded with ID: ${extension.id}`);
   return extension.id;
@@ -175,7 +174,8 @@ export async function cleanupBrowserbaseSession(
   if (sessionId) {
     try {
       const bb = createBrowserbaseClient();
-      await bb.sessions.update(sessionId, { status: 'REQUEST_RELEASE' });
+      const { projectId } = getBrowserbaseConfig();
+      await bb.sessions.update(sessionId, { projectId, status: 'REQUEST_RELEASE' });
     } catch (e) {
       // Ignore cleanup errors
     }
@@ -288,7 +288,7 @@ export async function verifyExtensionCapturing(
 
   // Check buffer info shows data
   const bufferTime = await popup.locator('#buffer-time').textContent();
-  const hasBuffer = bufferTime && !bufferTime.includes('--');
+  const hasBuffer = Boolean(bufferTime && !bufferTime.includes('--'));
 
   await popup.close();
 

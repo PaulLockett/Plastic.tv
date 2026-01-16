@@ -22,7 +22,10 @@
       "@background/*": ["./background/*"],
       "@tests/*": ["./tests/*"]
     },
-    "types": ["chrome", "node", "jest"]
+    "types": ["chrome", "node", "jest"],
+    "allowJs": true,
+    "checkJs": false,
+    "noImplicitAny": false
   },
   "include": [
     "lib/**/*",

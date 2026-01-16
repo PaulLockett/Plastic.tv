@@ -13,7 +13,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { config } from 'dotenv';
 import archiver from 'archiver';
-import { Browserbase } from '@browserbasehq/sdk';
+import { Browserbase, toFile } from '@browserbasehq/sdk';
 
 config();
 
@@ -86,12 +86,11 @@ async function main() {
 
   // Upload to Browserbase
   console.log('Uploading to Browserbase...');
-  const bb = new Browserbase(apiKey);
+  const bb = new Browserbase({ apiKey });
 
   try {
-    const extension = await bb.extensions.create({
-      file: new Blob([zipBuffer], { type: 'application/zip' })
-    });
+    const file = await toFile(zipBuffer, 'extension.zip', { type: 'application/zip' });
+    const extension = await bb.extensions.create({ file });
 
     console.log('\n✅ Upload successful!');
     console.log(`Extension ID: ${extension.id}`);

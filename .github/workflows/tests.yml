@@ -100,7 +100,7 @@ jobs:
 
       - name: Run type check
         working-directory: browser-clip
-        run: npm run typecheck || true
+        run: npm run typecheck
 
   browserbase-tests:
     name: E2E Tests (Browserbase Cloud)
