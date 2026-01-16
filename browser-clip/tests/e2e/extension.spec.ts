@@ -111,8 +111,8 @@ test.afterAll(async () => {
   }
 });
 
-// Skip local tests if in Browserbase mode (use unified fixture instead)
-const skipIfBrowserbase = false; // Both modes now use the same fixture
+// Skip local tests if in Browserbase mode - run only Browserbase-specific tests
+const skipIfBrowserbase = useBrowserbase;
 
 test.describe('Browser Clip Extension E2E', () => {
   test.skip(skipIfBrowserbase, 'Skipping local tests when Browserbase is enabled');

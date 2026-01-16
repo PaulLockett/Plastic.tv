@@ -122,12 +122,6 @@ jobs:
         working-directory: browser-clip
         run: npm ci
 
-      - name: Upload extension to Browserbase
-        working-directory: browser-clip
-        run: npm run upload:extension
-        env:
-          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
-
       - name: Run Browserbase E2E tests
         working-directory: browser-clip
         run: npm run test:e2e:browserbase
@@ -190,7 +184,7 @@ jobs:
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [unit-tests, e2e-tests, lint-typecheck]
+    needs: [unit-tests, e2e-tests, lint-typecheck, browserbase-tests]
     if: always()
 
     steps:
@@ -206,9 +200,15 @@ jobs:
           fi
 
           if [ "${{ needs.e2e-tests.result }}" == "success" ]; then
-            echo "✅ E2E Tests: Passed" >> $GITHUB_STEP_SUMMARY
+            echo "✅ E2E Tests (Local): Passed" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ E2E Tests: Failed or Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ E2E Tests (Local): Failed or Skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.browserbase-tests.result }}" == "success" ]; then
+            echo "✅ E2E Tests (Browserbase Cloud): Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ E2E Tests (Browserbase Cloud): Failed or Skipped" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.lint-typecheck.result }}" == "success" ]; then
