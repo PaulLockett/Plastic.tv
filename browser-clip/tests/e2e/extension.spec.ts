@@ -3,13 +3,18 @@
  *
  * These tests run against a real browser with the extension loaded.
  * Chrome extensions require launchPersistentContext to work properly.
+ * Browserbase tests connect via CDP to a cloud browser session.
  */
 
-import { test as base, expect, chromium, BrowserContext, Page } from '@playwright/test';
+import { test as base, expect, chromium, BrowserContext, Browser } from '@playwright/test';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as os from 'os';
+import {
+  setupBrowserbaseWithExtension,
+  cleanupBrowserbaseSession
+} from '../helpers/browserbase.js';
 
 // ES module compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -18,56 +23,96 @@ const __dirname = path.dirname(__filename);
 // Extension path - resolve to the browser-clip root
 const EXTENSION_PATH = path.resolve(__dirname, '../../');
 
+// Check if running in Browserbase mode
+const useBrowserbase = process.env.BROWSERBASE_ENABLED === 'true';
+
 // Custom test fixture that provides a persistent context with extension loaded
 type ExtensionFixtures = {
   context: BrowserContext;
   extensionId: string;
 };
 
+// Browserbase fixture state (shared across tests in the session)
+let browserbaseSession: {
+  browser: Browser;
+  context: BrowserContext;
+  extensionId: string;
+  sessionId: string;
+} | null = null;
+
 // Create custom test with extension fixtures
 const test = base.extend<ExtensionFixtures>({
   // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
-    // Create a temporary user data directory
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'browser-clip-test-'));
+    if (useBrowserbase) {
+      // Use Browserbase cloud browser
+      if (!browserbaseSession) {
+        console.log('Setting up Browserbase session with extension...');
+        const setup = await setupBrowserbaseWithExtension(EXTENSION_PATH);
+        browserbaseSession = {
+          browser: setup.browser,
+          context: setup.context,
+          extensionId: setup.extensionId,
+          sessionId: setup.session.sessionId
+        };
+      }
+      await use(browserbaseSession.context);
+    } else {
+      // Create a temporary user data directory for local testing
+      const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'browser-clip-test-'));
 
-    // Launch browser with persistent context (required for extensions)
-    const context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${EXTENSION_PATH}`,
-        `--load-extension=${EXTENSION_PATH}`,
-        '--no-first-run',
-        '--disable-default-apps',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-      ],
-    });
+      // Launch browser with persistent context (required for extensions)
+      const context = await chromium.launchPersistentContext(userDataDir, {
+        headless: false,
+        args: [
+          `--disable-extensions-except=${EXTENSION_PATH}`,
+          `--load-extension=${EXTENSION_PATH}`,
+          '--no-first-run',
+          '--disable-default-apps',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+        ],
+      });
 
-    await use(context);
+      await use(context);
 
-    // Cleanup
-    await context.close();
-    // Clean up temp directory
-    try {
-      fs.rmSync(userDataDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
+      // Cleanup
+      await context.close();
+      // Clean up temp directory
+      try {
+        fs.rmSync(userDataDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   },
   extensionId: async ({ context }, use) => {
-    // Wait for service worker and extract extension ID
-    let serviceWorker = context.serviceWorkers()[0];
-    if (!serviceWorker) {
-      serviceWorker = await context.waitForEvent('serviceworker', { timeout: 30000 });
+    if (useBrowserbase && browserbaseSession) {
+      // Use extension ID from Browserbase upload
+      await use(browserbaseSession.extensionId);
+    } else {
+      // Wait for service worker and extract extension ID (local mode)
+      let serviceWorker = context.serviceWorkers()[0];
+      if (!serviceWorker) {
+        serviceWorker = await context.waitForEvent('serviceworker', { timeout: 30000 });
+      }
+      const extensionId = serviceWorker.url().split('/')[2];
+      await use(extensionId);
     }
-    const extensionId = serviceWorker.url().split('/')[2];
-    await use(extensionId);
   },
 });
 
-// Skip all tests if in Browserbase mode (different setup required)
-const skipIfBrowserbase = process.env.BROWSERBASE_ENABLED === 'true';
+// Cleanup Browserbase session after all tests
+test.afterAll(async () => {
+  if (browserbaseSession) {
+    console.log('Cleaning up Browserbase session...');
+    await cleanupBrowserbaseSession(browserbaseSession.browser, browserbaseSession.sessionId);
+    browserbaseSession = null;
+  }
+});
+
+// Skip local tests if in Browserbase mode (use unified fixture instead)
+const skipIfBrowserbase = false; // Both modes now use the same fixture
 
 test.describe('Browser Clip Extension E2E', () => {
   test.skip(skipIfBrowserbase, 'Skipping local tests when Browserbase is enabled');
@@ -401,6 +446,7 @@ test.describe('Browser Clip Extension E2E', () => {
 });
 
 // Browserbase-specific tests (only run when BROWSERBASE_ENABLED=true)
+// These tests are designed to work with the cloud browser environment
 test.describe('Browserbase Cloud Tests', () => {
   test.skip(process.env.BROWSERBASE_ENABLED !== 'true', 'Browserbase not enabled');
 
@@ -417,17 +463,39 @@ test.describe('Browserbase Cloud Tests', () => {
     // The extension should be capturing
     await page.waitForTimeout(3000);
 
-    // Verify via popup
-    if (extensionId) {
-      const popup = await context.newPage();
-      await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+    // Verify via popup using the extension ID from Browserbase upload
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
 
-      const bufferSize = await popup.locator('#buffer-size').textContent();
-      expect(bufferSize).not.toBe('--');
+    // Check that the popup loaded and shows buffer info
+    await expect(popup.locator('.status-indicator')).toBeVisible({ timeout: 10000 });
 
-      await popup.close();
-    }
+    const bufferSize = await popup.locator('#buffer-size').textContent();
+    expect(bufferSize).not.toBe('--');
 
+    await popup.close();
     await page.close();
+  });
+
+  test('should load extension popup in Browserbase', async ({ context, extensionId }) => {
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
+
+    // Verify popup content loaded
+    await expect(popup.locator('.status-indicator')).toBeVisible({ timeout: 10000 });
+    await expect(popup.locator('.save-btn')).toBeVisible();
+
+    await popup.close();
+  });
+
+  test('should load extension options in Browserbase', async ({ context, extensionId }) => {
+    const options = await context.newPage();
+    await options.goto(`chrome-extension://${extensionId}/options/options.html`);
+
+    // Verify options content loaded
+    await expect(options.locator('h1')).toContainText('Browser Clip Settings', { timeout: 10000 });
+    await expect(options.locator('#storage-cap')).toBeVisible();
+
+    await options.close();
   });
 });

@@ -352,7 +352,7 @@ jobs:
 
 ### AI tests fail
 
-- Verify OPENAI_API_KEY is set
+- Verify GOOGLE_API_KEY is set (for Gemini models)
 - Check Stagehand version compatibility
 - Review agent output for specific failures
 
