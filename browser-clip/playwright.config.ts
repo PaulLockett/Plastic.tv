@@ -29,6 +29,8 @@ export default defineConfig({
       name: 'local-chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Extensions require headed mode (not headless)
+        headless: false,
         // Load extension in local mode
         launchOptions: {
           args: [

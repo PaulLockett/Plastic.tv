@@ -32,30 +32,41 @@ test.describe('Browser Clip Extension E2E', () => {
 
   test.describe('Extension Loading', () => {
     test('extension should be installed and active', async ({ context }) => {
-      // Navigate to extensions page
-      const page = await context.newPage();
-      await page.goto('chrome://extensions');
+      // Verify extension is loaded by checking service worker is available
+      // and we can access extension pages (chrome://extensions is blocked)
+      let backgroundPage = context.serviceWorkers()[0];
+      if (!backgroundPage) {
+        // Wait for service worker to be available
+        backgroundPage = await context.waitForEvent('serviceworker', { timeout: 10000 });
+      }
 
-      // Look for Browser Clip in the list
-      await expect(page.locator('text=Browser Clip')).toBeVisible({ timeout: 10000 });
+      // Extract extension ID from service worker URL
+      const extId = backgroundPage.url().split('/')[2];
+      extensionId = extId;
+
+      // Verify we can access the extension's popup page
+      const page = await context.newPage();
+      await page.goto(`chrome-extension://${extId}/popup/popup.html`);
+
+      // If we can load the popup, the extension is installed
+      await expect(page.locator('body')).toBeVisible();
 
       await page.close();
     });
 
     test('extension popup should open', async ({ context }) => {
-      // Get extension ID from background page
-      let backgroundPage = context.serviceWorkers()[0];
-      if (!backgroundPage) {
-        // Wait for service worker to be available
-        backgroundPage = await context.waitForEvent('serviceworker');
+      // Get extension ID from background page (may already be set)
+      if (!extensionId) {
+        let backgroundPage = context.serviceWorkers()[0];
+        if (!backgroundPage) {
+          backgroundPage = await context.waitForEvent('serviceworker');
+        }
+        extensionId = backgroundPage.url().split('/')[2];
       }
-
-      const extId = backgroundPage.url().split('/')[2];
-      extensionId = extId;
 
       // Open popup
       const popup = await context.newPage();
-      await popup.goto(`chrome-extension://${extId}/popup/popup.html`);
+      await popup.goto(`chrome-extension://${extensionId}/popup/popup.html`);
 
       // Verify popup content
       await expect(popup.locator('.status-indicator')).toBeVisible();
