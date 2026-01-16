@@ -7,7 +7,6 @@
 
 import { Stagehand } from '@browserbasehq/stagehand';
 import { z } from 'zod';
-import OpenAI from 'openai';
 import * as path from 'path';
 
 // Persona definitions for different user types
@@ -116,11 +115,19 @@ export async function createStagehandInstance(options: {
   browserbaseProjectId?: string;
   useBrowserbase?: boolean;
 }): Promise<Stagehand> {
+  // Get Google API key for Gemini models
+  const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
   const config: any = {
     env: options.useBrowserbase ? 'BROWSERBASE' : 'LOCAL',
     verbose: 1,
     debugDom: true,
-    enableCaching: true
+    enableCaching: true,
+    // Use Gemini model for AI agent functionality
+    modelName: 'gemini-2.0-flash',
+    modelClientOptions: {
+      apiKey: googleApiKey
+    }
   };
 
   if (options.useBrowserbase) {
@@ -129,7 +136,7 @@ export async function createStagehandInstance(options: {
   } else {
     config.headless = options.headless ?? false;
     if (options.extensionPath) {
-      config.browserLaunchOptions = {
+      config.localBrowserLaunchOptions = {
         args: [
           `--disable-extensions-except=${options.extensionPath}`,
           `--load-extension=${options.extensionPath}`,
