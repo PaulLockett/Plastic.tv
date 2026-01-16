@@ -72,8 +72,10 @@ function parseArgs(): {
 
 // Validate environment
 function validateEnvironment(useBrowserbase: boolean): void {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is required for AI tests');
+  // Check for Google API key (Gemini models)
+  const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!googleApiKey) {
+    throw new Error('GOOGLE_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY environment variable is required for AI tests');
   }
 
   if (useBrowserbase) {
