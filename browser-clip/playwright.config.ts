@@ -28,18 +28,8 @@ export default defineConfig({
     {
       name: 'local-chromium',
       use: {
-        ...devices['Desktop Chrome'],
-        // Extensions require headed mode (not headless)
-        headless: false,
-        // Load extension in local mode
-        launchOptions: {
-          args: [
-            `--disable-extensions-except=${process.cwd()}`,
-            `--load-extension=${process.cwd()}`,
-            '--no-first-run',
-            '--disable-default-apps',
-          ],
-        },
+        // Extension tests use custom launchPersistentContext in the test file
+        // No launchOptions needed here
       },
       testIgnore: useBrowserbase ? ['**/*'] : [],
     },
