@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@lib/*": ["./lib/*"],
+      "@utils/*": ["./utils/*"],
+      "@background/*": ["./background/*"],
+      "@tests/*": ["./tests/*"]
+    },
+    "types": ["chrome", "node", "jest"]
+  },
+  "include": [
+    "lib/**/*",
+    "utils/**/*",
+    "background/**/*",
+    "popup/**/*",
+    "options/**/*",
+    "scripts/**/*",
+    "tests/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}
