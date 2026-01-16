@@ -13,11 +13,12 @@
     "test:all": "npm run test && npm run test:e2e && npm run test:ai",
     "build:extension": "node scripts/build-extension.js",
     "upload:extension": "npx tsx scripts/upload-extension.ts",
-    "lint": "eslint . --ext .ts,.js",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@browserbasehq/sdk": "^2.0.0",
+    "@eslint/js": "^9.0.0",
     "@browserbasehq/stagehand": "^3.0.0",
     "@playwright/test": "^1.48.0",
     "@types/archiver": "^6.0.0",
