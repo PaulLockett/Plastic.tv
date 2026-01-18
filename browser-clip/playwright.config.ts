@@ -45,8 +45,8 @@ export default defineConfig({
     },
   ],
 
-  // Global timeout
-  timeout: 60000,
+  // Global timeout - adequate for Browserbase connection and extension loading
+  timeout: 90000, // 90s to allow for session creation and extension loading
   expect: {
     timeout: 10000,
   },

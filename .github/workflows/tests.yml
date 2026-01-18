@@ -122,12 +122,6 @@ jobs:
         working-directory: browser-clip
         run: npm ci
 
-      - name: Upload extension to Browserbase
-        working-directory: browser-clip
-        run: npm run upload:extension
-        env:
-          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
-
       - name: Run Browserbase E2E tests
         working-directory: browser-clip
         run: npm run test:e2e:browserbase

@@ -107,13 +107,20 @@ export async function createBrowserbaseSession(
   console.log('Creating Browserbase session...');
   const session = await bb.sessions.create(sessionConfig);
 
-  // Get connection URLs
-  const debugUrls = await bb.sessions.debug(session.id);
+  // Use the connectUrl directly from the session object
+  const wsEndpoint = session.connectUrl;
+
+  if (!wsEndpoint) {
+    throw new Error('Session connectUrl not available');
+  }
+
+  console.log(`Session created: ${session.id}`);
+  console.log(`Status: ${session.status}`);
 
   return {
     sessionId: session.id,
-    wsEndpoint: debugUrls.debuggerFullscreenUrl || debugUrls.debuggerUrl,
-    debuggerUrl: debugUrls.debuggerUrl
+    wsEndpoint,
+    debuggerUrl: undefined
   };
 }
 
@@ -142,20 +149,107 @@ export async function setupBrowserbaseWithExtension(
   browser: Browser;
   context: BrowserContext;
   extensionId: string;
+  chromeExtensionId?: string;
 }> {
-  // Upload extension
-  const extensionId = await uploadExtension(extensionPath);
+  // Upload extension to Browserbase
+  const uploadedExtensionId = await uploadExtension(extensionPath);
 
   // Wait a bit for extension to be processed
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Create session with extension
-  const session = await createBrowserbaseSession({ extensionId });
+  const session = await createBrowserbaseSession({ extensionId: uploadedExtensionId });
 
   // Connect with Playwright
+  console.log('Connecting to browser...');
   const { browser, context } = await connectToBrowserbase(session);
+  console.log('Connected to browser successfully');
 
-  return { session, browser, context, extensionId };
+  // Wait for extension to load and try to get Chrome extension ID
+  console.log('Waiting for extension to load...');
+
+  let chromeExtensionId: string | undefined;
+
+  // Try multiple times to detect the service worker (extensions can be slow to start)
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    console.log(`Attempt ${attempt}/5: Checking for service workers...`);
+
+    const serviceWorkers = context.serviceWorkers();
+    console.log(`Found ${serviceWorkers.length} service workers`);
+
+    if (serviceWorkers.length > 0) {
+      chromeExtensionId = serviceWorkers[0].url().split('/')[2];
+      console.log(`✓ Extension loaded with Chrome ID: ${chromeExtensionId}`);
+      break;
+    }
+
+    // Wait before next attempt
+    if (attempt < 5) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+
+  // If no service worker found, try using CDP to get targets
+  if (!chromeExtensionId) {
+    console.log('No service worker found, trying CDP target detection...');
+    try {
+      const page = context.pages()[0] || await context.newPage();
+      const client = await page.context().newCDPSession(page);
+
+      // Get all browser targets
+      const { targetInfos } = await client.send('Target.getTargets');
+
+      // Look for extension background page or service worker
+      const extensionTargets = targetInfos.filter((target: any) =>
+        target.type === 'service_worker' ||
+        target.type === 'background_page' ||
+        target.url?.startsWith('chrome-extension://')
+      );
+
+      console.log(`Found ${extensionTargets.length} extension-related targets`);
+
+      for (const target of extensionTargets) {
+        console.log(`Target: ${target.type} - ${target.url}`);
+        if (target.url?.startsWith('chrome-extension://')) {
+          const match = target.url.match(/chrome-extension:\/\/([a-z]+)\//);
+          if (match) {
+            chromeExtensionId = match[1];
+            console.log(`✓ Extension ID from CDP target: ${chromeExtensionId}`);
+            break;
+          }
+        }
+      }
+
+      await client.detach();
+    } catch (e) {
+      console.log('CDP detection failed:', e);
+    }
+  }
+
+  // Last resort: Try to wait for service worker event
+  if (!chromeExtensionId) {
+    console.log('Waiting for service worker event...');
+    try {
+      const serviceWorker = await Promise.race([
+        context.waitForEvent('serviceworker', { timeout: 5000 }),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
+
+      if (serviceWorker) {
+        chromeExtensionId = serviceWorker.url().split('/')[2];
+        console.log(`✓ Extension ID from service worker event: ${chromeExtensionId}`);
+      }
+    } catch (e) {
+      console.log('Service worker event wait failed');
+    }
+  }
+
+  if (!chromeExtensionId) {
+    console.log('⚠ Warning: Could not detect extension ID. Extension may not be loaded.');
+  }
+
+  console.log('Setup complete');
+  return { session, browser, context, extensionId: uploadedExtensionId, chromeExtensionId };
 }
 
 /**

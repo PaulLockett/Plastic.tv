@@ -15,6 +15,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
 import {
   createStagehandInstance,
   runAITestScenario,
@@ -25,6 +26,10 @@ import {
   AITestResult,
   Persona
 } from './stagehand-helper.js';
+
+// ES module compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 config();

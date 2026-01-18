@@ -37,6 +37,7 @@ let browserbaseSession: {
   browser: Browser;
   context: BrowserContext;
   extensionId: string;
+  chromeExtensionId?: string;
   sessionId: string;
 } | null = null;
 
@@ -53,6 +54,7 @@ const test = base.extend<ExtensionFixtures>({
           browser: setup.browser,
           context: setup.context,
           extensionId: setup.extensionId,
+          chromeExtensionId: setup.chromeExtensionId,
           sessionId: setup.session.sessionId
         };
       }
@@ -88,13 +90,17 @@ const test = base.extend<ExtensionFixtures>({
   },
   extensionId: async ({ context }, use) => {
     if (useBrowserbase && browserbaseSession) {
-      // Use extension ID from Browserbase upload
-      await use(browserbaseSession.extensionId);
+      // Use the Chrome extension ID from setup if available
+      if (browserbaseSession.chromeExtensionId) {
+        await use(browserbaseSession.chromeExtensionId);
+      } else {
+        throw new Error('Extension not loaded in Browserbase session');
+      }
     } else {
-      // Wait for service worker and extract extension ID (local mode)
+      // Local mode: wait for service worker
       let serviceWorker = context.serviceWorkers()[0];
       if (!serviceWorker) {
-        serviceWorker = await context.waitForEvent('serviceworker', { timeout: 30000 });
+        serviceWorker = await context.waitForEvent('serviceworker', { timeout: 10000 });
       }
       const extensionId = serviceWorker.url().split('/')[2];
       await use(extensionId);

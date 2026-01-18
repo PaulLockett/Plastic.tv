@@ -14,8 +14,13 @@ import * as fs from 'fs';
 import { config } from 'dotenv';
 import archiver from 'archiver';
 import { Browserbase, toFile } from '@browserbasehq/sdk';
+import { fileURLToPath } from 'url';
 
 config();
+
+// ES module compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const EXTENSION_PATH = path.resolve(__dirname, '../');
 
